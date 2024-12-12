@@ -2,12 +2,14 @@ package Main;
 
 import Models.Order;
 import utils.JSONReader;
+import utils.JSONWriter;
 import utils.FileUtile;
 import DAO.CustomerDAO;
 import DAO.OrderDAO;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class ParseJsonThread extends Thread {
@@ -50,6 +52,8 @@ public class ParseJsonThread extends Thread {
                             continue;
                         }
 
+                        List<Order> remainingOrders = new ArrayList<>(); // Liste des ordres à conserver
+
                         for (Order order : orders) {
                             if (CustomerDAO.getCustomerById(order.getCustomerId()).isPresent()) {
                                 OrderDAO.insertOrder(order);
@@ -59,20 +63,29 @@ public class ParseJsonThread extends Thread {
                             } else {
                                 FileUtile.appendToFile(errorFile, order);
                                 System.out.println("Commande invalide ajoutée au fichier d'erreurs : " + order);
+                                remainingOrders.add(order); // Conserver l'ordre invalide
                             }
                         }
 
+                        // Mise à jour du fichier JSON avec les ordres restants
+                        try {
+                            JSONWriter.writeOrdersToFile(file.getPath(), remainingOrders);
+                            System.out.println("Mise à jour du fichier JSON après traitement : " + file.getName());
+                        } catch (IOException e) {
+                            System.err.println("Erreur lors de la mise à jour du fichier JSON : " + file.getName());
+                            e.printStackTrace();
+                        }
+
                         if (i < files.length - 1) {
-                            System.out.println("Attente de 1 minute avant de traiter le fichier suivant...");
-                            Thread.sleep(3600000);
+                            System.out.println("Attente de 1h minute avant de traiter le fichier suivant...");
+                            Thread.sleep(60000); // Attendre 1 minute
                         }
                     }
                 } else {
                     System.out.println("Aucun fichier JSON trouvé dans le répertoire.");
                 }
 
-                // Attente avant le prochain traitement (facultatif pour limiter la charge CPU)
-                Thread.sleep(5000);  // Attendre 5 secondes avant de vérifier à nouveau les fichiers
+                Thread.sleep(36000);
 
             } catch (InterruptedException e) {
                 System.err.println("Le thread a été interrompu.");
